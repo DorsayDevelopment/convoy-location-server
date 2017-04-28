@@ -3,16 +3,28 @@ const Location = require('./location');
 const amqplib = require('amqplib');
 
 const { RABBITMQ_HOST, RABBITMQ_PORT } = process.env;
+const EXCHANGE_NAME = 'location';
 
-const RABBITMQ_URL = `amqp://${RABBITMQ_HOST}:${RABBITMQ_PORT}`
+const RABBITMQ_URL = `amqp://${RABBITMQ_HOST}:${RABBITMQ_PORT}`;
 
 async function getChannel(connectionString) {
+  const options = {
+    durable: true,
+    autoDelete: false
+  };
+
+  
   const client = await amqplib.connect(connectionString);
-  return await client.createChannel();
+  const channel = await client.createChannel();
+  const result = await channel.assertExchange(EXCHANGE_NAME, 'topic', options);
+  console.log(result);
+
+  return channel;
 }
 
-getChannel(RABBITMQ_URL)
-  .then(channel => {
+async function main() {
+  try {
+    const channel = await getChannel(RABBITMQ_URL)
     const server = dgram.createSocket('udp4');
 
     server.on('error', (err) => {
@@ -33,7 +45,11 @@ getChannel(RABBITMQ_URL)
     });
 
     server.bind(3000);
-  }).catch(err => {
+
+  } catch (err) {
     console.log('Error getting RabbitMQ channel.');
     console.error(err.message);
-  });
+  }
+}
+
+main();
