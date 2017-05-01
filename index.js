@@ -12,12 +12,11 @@ async function getChannel(connectionString) {
     durable: true,
     autoDelete: false
   };
-
   
   const client = await amqplib.connect(connectionString);
   const channel = await client.createChannel();
   const result = await channel.assertExchange(EXCHANGE_NAME, 'topic', options);
-  console.log(result);
+  console.log('Connection to exchange successful');
 
   return channel;
 }
