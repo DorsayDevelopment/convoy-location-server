@@ -5,6 +5,11 @@ class Location {
     this.long = long;
   }
 
+  toJSON() {
+    const { user, lat, long } = this;
+    return { user, lat, long };
+  }
+
   toString() {
     return `${this.user}|${this.lat}|${this.long}`
   }
