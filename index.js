@@ -7,7 +7,7 @@ const EXCHANGE_NAME = 'location';
 
 const RABBITMQ_URL = `amqp://${RABBITMQ_HOST}:${RABBITMQ_PORT}`;
 
-async function getChannel(connectionString) {
+async function setupRabbit(connectionString) {
   const options = {
     durable: true,
     autoDelete: false
@@ -19,6 +19,29 @@ async function getChannel(connectionString) {
   console.log('Connection to exchange successful');
 
   return channel;
+}
+
+function getChannel(connectionString, maxTries=0) {
+  let tries = 0;
+
+  return new Promise((resolve, reject) => {
+    const retry = setInterval(() => {
+      console.log(`Attemping rabbitmq connection try ${++tries} of ${maxTries || 'infinite'}...`);
+
+      setupRabbit(connectionString)
+        .then((channel) => {
+          clearInterval(retry);
+          resolve(channel);
+        })
+        .catch((err) => {
+          if (maxTries > 0 && tries >= maxTries) {
+            console.log('Maximum tries reached. Aborting...')
+            clearInterval(retry);
+            reject(err);
+          }
+        });
+    }, 2000);
+  });
 }
 
 async function main() {
@@ -35,7 +58,7 @@ async function main() {
       console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
       const newLocation = Location.fromString(msg.toString('utf8'));
       console.log(newLocation);
-      channel.publish('location', Location.user, msg);
+      channel.publish('location', Location.user, new Buffer(JSON.stringify(newLocation.toJSON())));
     });
 
     server.on('listening', () => {
